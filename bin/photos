@@ -1,44 +1,10 @@
 #! /usr/bin/env node
 
-var ExifImage = require('exif').ExifImage
-var geocoder = require('geocoder')
-var geolib = require('geolib')
+var info = require('../lib/info')
 var filename = process.argv[2]
 console.log('reading file:', filename)
 
-
-new ExifImage({image: filename}, function(err, data){
-  try{
-    var dateTaken = data.exif.CreateDate
-    var camera = data.image.Make + ' ' + data.image.Model
-    var lat = latitude(data)
-    var long = longitude(data)
-    console.log('lat:', lat)
-    console.log('long:', long)
-    var location = geocoder.reverseGeocode(lat, long, function(err, data){
-      console.log('location:', data.results[0].formatted_address)
-    })
-    console.log('gps:', data.gps)
-    console.log('camera:', camera)
-    console.log('data taken:', dateTaken)
-  }catch(e){
-    if (typeof e === 'string'){
-      console.error('Error', e)
-    }else{
-      console.error(e.message)
-      console.error(e.stack)
-    }
-  }
+info(filename, function(err, info){
+  if (err) return console.error(err.message)
+  console.log(info)
 })
-
-function latitude(data){
-  var coords = data.gps.GPSLatitude
-  if (!coords) return null
-  return geolib.useDecimal(coords[0] + "° " + coords[1] + "' " + coords[2] + '" ' + data.gps.GPSLatitudeRef)
-}
-
-function longitude(data){
-  var coords = data.gps.GPSLongitude
-  if (!coords) return null
-  return geolib.useDecimal(coords[0] + "° " + coords[1] + "' " + coords[2] + '" ' + data.gps.GPSLongitudeRef)
-}

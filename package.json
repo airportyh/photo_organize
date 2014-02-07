@@ -12,8 +12,9 @@
   "author": "Toby Ho",
   "license": "MIT",
   "dependencies": {
-    "exif": "~0.3.3",
     "geocoder": "~0.1.0",
-    "geolib": "~1.3.5"
+    "geolib": "~1.3.5",
+    "exif2": "0.0.1",
+    "moment": "~2.5.1"
   }
 }
