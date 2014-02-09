@@ -1,0 +1,38 @@
+#! /usr/bin/env node-dev
+
+var http = require('http')
+var st = require('st')
+var level = require('level')
+var db = level('db.level')
+var mount = st({
+  path: '/',
+  url: '/'
+})
+
+var server = http.createServer(function(res, resp){
+  if (res.url === '/'){
+    db.createReadStream()
+      .on('data', function(data){
+        var info
+        try{
+          info = JSON.parse(data.value)
+          resp.write('<a href="' + 
+            data.key +
+            '" target="_blank">' +
+            (info.filename || data.key) +
+            '</a><br>')
+        }catch(e){
+          resp.write('JSON error for ' + data.key)
+        }
+        
+      })
+      .on('end', function(){
+        resp.end()
+      })
+  }else{
+    mount(res, resp)
+  }
+})
+
+server.listen(3000)
+console.log('listening on port 3000')

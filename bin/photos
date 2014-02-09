@@ -1,10 +1,61 @@
 #! /usr/bin/env node
 
 var info = require('../lib/info')
-var filename = process.argv[2]
-console.log('reading file:', filename)
+var path = require('path')
+var fs = require('fs')
+var assert = require('assert')
+var level = require('level')
+var db = level(path.join(__dirname, '..', 'db.level'))
 
-info(filename, function(err, info){
-  if (err) return console.error(err.message)
-  console.log(info)
+var async = require('async')
+var info = require('../lib/info')
+var log = require('npmlog')
+var Bagpipe = require('bagpipe')
+var dirname = process.argv[2] || './'
+console.log('reading directory:', dirname)
+assert(fs.statSync(dirname).isDirectory())
+
+var getInfoQueue = new Bagpipe(20)
+
+walk(dirname, function(err){
+  if (err) return log.error(err.message)
+  log.info('ok')
 })
+
+function walk(dirname, callback){
+  fs.readdir(dirname, function(err, entries){
+    if (err){
+      if (err.code === 'ENOTDIR'){ return callback(null) }
+      else { return callback(err) }
+    }
+
+    async.each(entries, function(entry, next){
+      var ext = path.extname(entry).toLowerCase()
+      var entryPath = path.resolve(path.join(dirname, entry))
+      if (matches(ext)){
+        getInfoQueue.push(getInfo, entryPath, function(err, info){
+          if (err) log.warn('Error getting info for', 
+            entryPath, err.message)
+          db.put(entryPath, JSON.stringify(info), next)
+        })
+      }else{
+        walk(entryPath, next)
+      }
+    }, callback)
+  })
+}
+
+function getInfo(entryPath, callback){
+  db.get(entryPath, function(err, data){
+    if (!data){
+      log.info('Calling exiftool for ' + entryPath)
+      return info(entryPath, callback)
+    }
+    log.info('Cache hit for ' + entryPath)
+    return callback(null, JSON.parse(data))
+  })
+}
+
+function matches(ext){
+  return ext === '.jpg' || ext === '.png' || ext === '.mov'
+}
